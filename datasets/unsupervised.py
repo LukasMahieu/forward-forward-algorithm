@@ -1,4 +1,4 @@
-"""Datasets and loaders for unsupervised learning."""
+"""Datasets and loaders for unsupervised learning example."""
 import torch
 import numpy as np
 import random
