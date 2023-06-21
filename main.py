@@ -78,14 +78,14 @@ for epoch in range(1, NUM_EPOCHS + 1):
             writer.add_scalar(
                 f"Layer {layer_idx} Pos Goodness",
                 layer_goodness,
-                (epoch) * batch_idx,
+                (epoch - 1) * len(positive_loader) + batch_idx,
             )
 
         for layer_idx, layer_goodness in enumerate(layer_goodnesses_neg):
             writer.add_scalar(
                 f"Layer {layer_idx} Neg Goodness",
                 layer_goodness,
-                (epoch) * batch_idx,
+                (epoch - 1) * len(positive_loader) + batch_idx,
             )
 
         # Print progress every 10 batches
@@ -96,11 +96,13 @@ for epoch in range(1, NUM_EPOCHS + 1):
                 writer.add_scalar(
                     f"Layer {layer_idx} Average Batch Loss",
                     average_loss,
-                    (epoch) * batch_idx,
+                    (epoch - 1) * len(positive_loader) + batch_idx,
                 )
                 total_loss += average_loss
             writer.add_scalar(
-                f"Total Average Batch Loss", total_loss, (epoch) * batch_idx
+                f"Total Average Batch Loss",
+                total_loss,
+                (epoch - 1) * len(positive_loader) + batch_idx,
             )
             postfix = {
                 f"Layer {layer_idx}:": running_loss / (10 * 2)
