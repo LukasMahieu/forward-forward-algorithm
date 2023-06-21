@@ -54,6 +54,24 @@ class ReceptiveFieldLayer(nn.Module):
         return self.forward(x).detach(), loss.item(), goodness.item()
 
 
+class ReceptiveFieldClassifier(nn.Module):
+    def __init__(self, device):
+        super(ReceptiveFieldClassifier, self).__init__()
+        self.layer1 = nn.ReLU(nn.Conv2d(1, 128, 10, 6))
+        self.layer2 = nn.ReLU(nn.Conv2d(128, 220, 2, 1))
+        self.layer3 = nn.ReLU(nn.Conv2d(220, 512, 2, 1))
+
+        self.fc = nn.Linear(512, 10)
+
+    def forward(self, x):
+        h = self.layer1(x)
+        h = self.layer2(h)
+        h = self.layer3(h)
+
+        h = self.fc(h)
+        return h
+
+
 ### Fully connected not implemented yet ###
 
 
@@ -73,7 +91,8 @@ class FullyConnected(nn.Module):
 
     def forward(self, x):
         """Forward pass through the network.
-        Note: don't forget to apply layer normalization to the output of each layer."""
+        Note: don't forget to apply layer normalization to the output of each layer.
+        """
         output1 = self.relu1(self.fc1(x))
         output2 = self.relu2(self.fc2(output1))
         output3 = self.relu3(self.fc3(output2))
