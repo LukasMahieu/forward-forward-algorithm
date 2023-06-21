@@ -13,7 +13,7 @@ from networks.unsupervised import ReceptiveFieldNet
 from datasets.unsupervised import create_mnist_datasets
 
 # Hyperparams
-BATCH_SIZE = 64
+BATCH_SIZE = 1024
 NUM_EPOCHS = 100
 THRESHOLD = 1  # Arbitrary threshold > 0
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -24,12 +24,16 @@ positive, negative, test = create_mnist_datasets("data")
 model = ReceptiveFieldNet(DEVICE).to(DEVICE)
 
 # Create data loaders
-positive_loader = DataLoader(positive, batch_size=BATCH_SIZE, shuffle=True)
-negative_loader = DataLoader(negative, batch_size=BATCH_SIZE, shuffle=True)
+positive_loader = DataLoader(
+    positive, batch_size=BATCH_SIZE, shuffle=True, num_workers=0
+)
+negative_loader = DataLoader(
+    negative, batch_size=BATCH_SIZE, shuffle=True, num_workers=0
+)
 
 # Logging
 writer = SummaryWriter("runs/unsupervised")
-total_loss = 100
+lowest_total_loss = 100
 timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
 # Training loop
@@ -54,13 +58,17 @@ for epoch in range(1, NUM_EPOCHS + 1):
         negative_images = negative_images.to(DEVICE)
 
         # Positive pass
-        layer_losses, layer_goodnesses_pos = model.train_batch(positive_images, "pos")
+        layer_losses, layer_goodnesses_pos = model.train_batch(
+            positive_images, "pos"
+        )
 
         for i, layer_loss in enumerate(layer_losses):
             running_layer_losses[i] += layer_loss
 
         # Negative pass
-        layer_losses, layer_goodnesses_neg = model.train_batch(negative_images, "neg")
+        layer_losses, layer_goodnesses_neg = model.train_batch(
+            negative_images, "neg"
+        )
 
         for i, layer_loss in enumerate(layer_losses):
             running_layer_losses[i] += layer_loss
@@ -95,7 +103,7 @@ for epoch in range(1, NUM_EPOCHS + 1):
                 f"Total Average Batch Loss", total_loss, (epoch) * batch_idx
             )
             postfix = {
-                f"Layer{layer_idx}: Loss": running_loss / (10 * 2)
+                f"Layer {layer_idx}:": running_loss / (10 * 2)
                 for layer_idx, running_loss in running_layer_losses.items()
             }
             progress_bar.set_postfix(postfix)
@@ -105,16 +113,21 @@ for epoch in range(1, NUM_EPOCHS + 1):
     if epoch % 5 == 0:
         total_loss = 0.0
         for layer_idx, running_loss in running_layer_losses.items():
-            average_loss = running_loss / (len(positive_loader) + len(negative_loader))
+            average_loss = running_loss / (
+                len(positive_loader) + len(negative_loader)
+            )
 
-            print(f"Epoch: {epoch}, Average Layer {layer_idx} Loss: {average_loss:.4f}")
+            print(
+                f"Epoch: {epoch}, Average Layer {layer_idx} Loss: {average_loss:.4f}"
+            )
             total_loss += average_loss
         if total_loss < lowest_total_loss:
             lowest_total_loss = total_loss
             if not os.path.exists("models"):
                 os.makedirs("models")
             torch.save(
-                model.state_dict(), f"models/unsupervised_{timestamp}_{epoch}.pt"
+                model.state_dict(),
+                f"models/unsupervised_{timestamp}_{epoch}.pt",
             )
 
 writer.close()
