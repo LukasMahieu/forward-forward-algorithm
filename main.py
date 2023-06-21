@@ -1,3 +1,5 @@
+import os
+
 import torch
 import torch.nn as nn
 
@@ -109,6 +111,8 @@ for epoch in range(1, NUM_EPOCHS + 1):
             total_loss += average_loss
         if total_loss < lowest_total_loss:
             lowest_total_loss = total_loss
+            if not os.path.exists("models"):
+                os.makedirs("models")
             torch.save(
                 model.state_dict(), f"models/unsupervised_{timestamp}_{epoch}.pt"
             )
