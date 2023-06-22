@@ -8,8 +8,14 @@ pip install -r requirements.txt
 
 Install latest version of [pytorch and torchvision](https://pytorch.org/get-started/locally/) for your system.
 
+## To Do
+[] : Fix loss zero near end of epoch
+[] : Fix loss calculation
+
+## Tmp
+
 ```
-# Didn't work
+# Didn't work since prob_pos too similar always (so 1 or 0)
 pos_goodness = torch.sum(torch.square(self.forward(x_pos)))  # [0;inf]
 neg_goodness = torch.sum(torch.square(self.forward(x_neg)))  # [0;inf]
 
@@ -22,4 +28,15 @@ epsilon = 1e-7  # prevent log(0)
 loss = -torch.log(prob_pos_if_pos + epsilon) - torch.log(
     1 - prob_pos_if_neg + epsilon
 )  # [0;inf]
+```
+
+```
+# Didn't work since positive will simply be slightly larger than negative (for layer2 and 3 only?)
+
+goodness = torch.sum(torch.square(self.forward(x)))  # [0;inf]
+
+if datatype == "pos":
+    loss = -torch.log(goodness + epsilon)
+elif datatype == "neg":
+    loss = torch.log(goodness + epsilon)
 ```
