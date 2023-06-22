@@ -13,7 +13,9 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 model = ReceptiveFieldClassifier().to(DEVICE)
 
-pretrained_dict = torch.load("models/test.pt")
+pretrained_dict = torch.load(
+    "models/unsupervised_2023-06-23_00-18-08_5_4.253.pt"
+)
 model_dict = model.state_dict()
 pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
 
