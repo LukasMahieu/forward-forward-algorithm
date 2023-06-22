@@ -58,17 +58,13 @@ for epoch in range(1, NUM_EPOCHS + 1):
         negative_images = negative_images.to(DEVICE)
 
         # Positive pass
-        layer_losses, layer_goodnesses_pos = model.train_batch(
-            positive_images, "pos"
-        )
+        layer_losses, layer_goodnesses_pos = model.train_batch(positive_images, "pos")
 
         for i, layer_loss in enumerate(layer_losses):
             running_layer_losses[i] += layer_loss
 
         # Negative pass
-        layer_losses, layer_goodnesses_neg = model.train_batch(
-            negative_images, "neg"
-        )
+        layer_losses, layer_goodnesses_neg = model.train_batch(negative_images, "neg")
 
         for i, layer_loss in enumerate(layer_losses):
             running_layer_losses[i] += layer_loss
@@ -88,8 +84,12 @@ for epoch in range(1, NUM_EPOCHS + 1):
                 (epoch - 1) * len(positive_loader) + batch_idx,
             )
 
-        # Print progress every 10 batches
-        if batch_idx % 10 == 0:
+        # Print progress every 2 batches
+        if batch_idx % 2 == 0:
+            model_params = model.state_dict()
+            # test saving
+            torch.save(model_params, "models/test.pt")
+
             total_loss = 0.0
             for layer_idx, running_loss in running_layer_losses.items():
                 average_loss = running_loss / (batch_idx * 2 + 1)
@@ -115,13 +115,9 @@ for epoch in range(1, NUM_EPOCHS + 1):
     if epoch % 5 == 0:
         total_loss = 0.0
         for layer_idx, running_loss in running_layer_losses.items():
-            average_loss = running_loss / (
-                len(positive_loader) + len(negative_loader)
-            )
+            average_loss = running_loss / (len(positive_loader) + len(negative_loader))
 
-            print(
-                f"Epoch: {epoch}, Average Layer {layer_idx} Loss: {average_loss:.4f}"
-            )
+            print(f"Epoch: {epoch}, Average Layer {layer_idx} Loss: {average_loss:.4f}")
             total_loss += average_loss
         if total_loss < lowest_total_loss:
             lowest_total_loss = total_loss
