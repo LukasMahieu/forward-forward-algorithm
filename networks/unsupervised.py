@@ -38,12 +38,14 @@ class ReceptiveFieldNet(nn.Module):
 
 
 class ReceptiveFieldLayer(nn.Module):
-    def __init__(self, C_in: int, C_out: int, kernel_size: int, stride: int, lr=0.001):
+    def __init__(
+        self, C_in: int, C_out: int, kernel_size: int, stride: int, lr=0.001
+    ):
         super(ReceptiveFieldLayer, self).__init__()
         self.relu = nn.ReLU()
         self.conv = nn.Conv2d(C_in, C_out, kernel_size, stride)
         self.opt = optim.Adam(self.parameters(), lr=lr)
-        self.threshold = 50  # Arbitrary threshold > 0 (pref > 2 imo)
+        self.threshold = 2  # Arbitrary threshold > 0 (pref > 2 imo)
 
     def forward(self, x: torch.Tensor, epsilon: float = 1e-8) -> torch.Tensor:
         x_normalized = x / (epsilon + x.norm(dim=1, keepdim=True))
@@ -54,12 +56,13 @@ class ReceptiveFieldLayer(nn.Module):
         """Train the layer for one batch of positive or negative data."""
         self.opt.zero_grad()
 
-        goodness = torch.sum(torch.square(self.forward(x)))  # [0;inf]
+        goodness = torch.mean(torch.square(self.forward(x)))  # [0;inf]
 
         if datatype == "pos":
-            loss = -torch.log(goodness + epsilon)
+            loss = -goodness + self.threshold
         elif datatype == "neg":
-            loss = torch.log(goodness + epsilon)
+            loss = goodness - self.threshold
+        loss = torch.log(1 + torch.exp(loss))
         loss.backward()
         self.opt.step()
 
