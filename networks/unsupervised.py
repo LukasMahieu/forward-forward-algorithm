@@ -2,6 +2,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch
 
+from collections import OrderedDict
 
 """Receptive Field Network for unsupervised learning."""
 
@@ -15,6 +16,7 @@ class ReceptiveFieldNet(nn.Module):
         self.layers = [layer1, layer2, layer3]
 
     def train_batch(self, x, datatype: str):
+        """"""
         h = x
         layer_losses = []
         layer_goodnesses = []
@@ -24,21 +26,31 @@ class ReceptiveFieldNet(nn.Module):
             layer_goodnesses.append(goodness)
         return layer_losses, layer_goodnesses
 
+    def state_dict(self):
+        state = OrderedDict()
+        for i, layer in enumerate(self.layers):
+            layer_state = layer.state_dict()
+            for name, param in layer_state.items():
+                name = name.split(".")[1]  # Remove "conv" from name
+                new_name = f"layer{i+1}.{name}"
+                state[new_name] = param
+        return state
+
 
 class ReceptiveFieldLayer(nn.Module):
-    def __init__(self, C_in, C_out, kernel_size, stride, lr=0.001):
+    def __init__(self, C_in: int, C_out: int, kernel_size: int, stride: int, lr=0.001):
         super(ReceptiveFieldLayer, self).__init__()
         self.relu = nn.ReLU()
         self.conv = nn.Conv2d(C_in, C_out, kernel_size, stride)
         self.opt = optim.Adam(self.parameters(), lr=lr)
         self.threshold = 50  # Arbitrary threshold > 0 (pref > 2 imo)
 
-    def forward(self, x, epsilon=1e-8):
+    def forward(self, x: torch.Tensor, epsilon: float = 1e-8) -> torch.Tensor:
         x_normalized = x / (epsilon + x.norm(dim=1, keepdim=True))
         output = self.relu(self.conv(x_normalized))
         return output
 
-    def train(self, x, datatype: str, epsilon=1e-8):
+    def train(self, x: torch.Tensor, datatype: str, epsilon=1e-8) -> tuple:
         """Train the layer for one batch of positive or negative data."""
         self.opt.zero_grad()
 
@@ -55,19 +67,31 @@ class ReceptiveFieldLayer(nn.Module):
 
 
 class ReceptiveFieldClassifier(nn.Module):
-    def __init__(self, device):
+    def __init__(self):
         super(ReceptiveFieldClassifier, self).__init__()
-        self.layer1 = nn.ReLU(nn.Conv2d(1, 128, 10, 6))
-        self.layer2 = nn.ReLU(nn.Conv2d(128, 220, 2, 1))
-        self.layer3 = nn.ReLU(nn.Conv2d(220, 512, 2, 1))
+        self.layer1 = nn.Conv2d(1, 128, 10, 6)
+        self.relu1 = nn.ReLU()
 
-        self.fc = nn.Linear(512, 10)
+        self.layer2 = nn.Conv2d(128, 220, 2, 1)
+        self.relu2 = nn.ReLU()
+
+        self.layer3 = nn.Conv2d(220, 512, 2, 1)
+        self.relu3 = nn.ReLU()
+
+        self.flatten = nn.Flatten()
+        self.fc = nn.Linear(2048, 10)
 
     def forward(self, x):
         h = self.layer1(x)
-        h = self.layer2(h)
-        h = self.layer3(h)
+        h = self.relu1(h)
 
+        h = self.layer2(h)
+        h = self.relu2(h)
+
+        h = self.layer3(h)
+        h = self.relu3(h)
+
+        h = self.flatten(h)
         h = self.fc(h)
         return h
 
