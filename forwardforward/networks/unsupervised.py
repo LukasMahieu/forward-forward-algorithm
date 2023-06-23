@@ -1,18 +1,18 @@
+"""Receptive Field Network for unsupervised learning."""
 import torch.nn as nn
 import torch.optim as optim
 import torch
 
 from collections import OrderedDict
 
-"""Receptive Field Network for unsupervised learning."""
-
 
 class ReceptiveFieldNet(nn.Module):
-    def __init__(self, device):
+    def __init__(self, device, supervised: bool = False):
         super(ReceptiveFieldNet, self).__init__()
         layer1 = ReceptiveFieldLayer(1, 128, 10, 6).to(device)
         layer2 = ReceptiveFieldLayer(128, 220, 2, 1).to(device)
         layer3 = ReceptiveFieldLayer(220, 512, 2, 1).to(device)
+
         self.layers = [layer1, layer2, layer3]
 
     def train_batch(self, x, datatype: str):
@@ -38,9 +38,7 @@ class ReceptiveFieldNet(nn.Module):
 
 
 class ReceptiveFieldLayer(nn.Module):
-    def __init__(
-        self, C_in: int, C_out: int, kernel_size: int, stride: int, lr=0.001
-    ):
+    def __init__(self, C_in: int, C_out: int, kernel_size: int, stride: int, lr=0.001):
         super(ReceptiveFieldLayer, self).__init__()
         self.relu = nn.ReLU()
         self.conv = nn.Conv2d(C_in, C_out, kernel_size, stride)

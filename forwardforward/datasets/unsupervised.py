@@ -143,10 +143,14 @@ class UnsupervisedDataset(torch.utils.data.Dataset):
         self.images_directory = images_directory
         self.images_list = os.listdir(images_directory)
         self.label = torch.Tensor([1 if "positive" in images_directory else 0])
+        self.transform = transforms.Compose(
+            [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
+        )
 
     def __getitem__(self, index):
         image_path = os.path.join(self.images_directory, self.images_list[index])
         image = np.load(image_path)
+        image = self.transform(image)
         return image, self.label
 
     def __len__(self):

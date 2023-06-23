@@ -1,126 +1,126 @@
+"""Test forward-forward algorithm (Hinton) on MNIST using unsupervised and supervised learning."""
+
 import os
-
-import torch
-import torch.nn as nn
-
-import numpy as np
-
-from torch.utils.data import DataLoader
-from torch.utils.tensorboard import SummaryWriter
-
-from tqdm import tqdm
+import argparse
 from datetime import datetime
+import torch
+from torch.utils.tensorboard import SummaryWriter
+from torch.utils.data import DataLoader
 
-from networks.unsupervised import ReceptiveFieldNet
-from datasets.unsupervised import create_mnist_datasets_unsupervised
-
-# Hyperparams
-BATCH_SIZE = 1000  # So 60 batches since 60k images
-NUM_EPOCHS = 10
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print("Using device:", DEVICE)
-
-# Create a dataset & dataloader (MNIST)
-positive, negative, test = create_mnist_datasets_unsupervised("data")
-model = ReceptiveFieldNet(DEVICE).to(DEVICE)
-
-# Create data loaders
-positive_loader = DataLoader(
-    positive, batch_size=BATCH_SIZE, shuffle=True, num_workers=0
+from forwardforward.datasets.unsupervised import (
+    create_mnist_datasets_unsupervised,
+    _load_mnist,
 )
-negative_loader = DataLoader(
-    negative, batch_size=BATCH_SIZE, shuffle=True, num_workers=0
+from forwardforward.train.unsupervised_backbone import train_unsupervised_backbone
+from forwardforward.train.unsupervised_head import train_unsupervised_clf
+from forwardforward.networks.unsupervised import (
+    ReceptiveFieldNet,
+    ReceptiveFieldClassifier,
 )
 
-# Logging
-writer = SummaryWriter("runs/unsupervised")
-lowest_total_loss = 100
-timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-running_batch_idx = 0
-running_total_loss = 0.0
-
-# Training loop
-for epoch in range(1, NUM_EPOCHS + 1):
-    model.train()
-
-    progress_bar = tqdm(
-        enumerate(zip(positive_loader, negative_loader)),
-        total=min(len(positive_loader), len(negative_loader)),
-        desc=f"Epoch {epoch}",
-        unit="batch",
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--train_unsupervised_backbone", action="store_true")
+    parser.add_argument("--train_unsupervised_clf", action="store_true")
+    parser.add_argument("--train_supervised", action="store_true")
+    parser.add_argument("--batch_size", type=int, default=1000)
+    parser.add_argument("--num_epochs", type=int, default=10)
+    parser.add_argument(
+        "--no_logs", default=False, action="store_true", help="Don't log to tensorboard"
     )
+    parser.add_argument(
+        "--pretrained_backbone_filename",
+        type=str,
+        default="",
+        help="Optional filename of pretrained backbone in /models. Will use latest backbone in models/ if not specified.",
+    )
+    return parser.parse_args()
 
-    for batch_idx, (positive_batch, negative_batch) in progress_bar:
-        batch_layer_losses = {}
-        for i, layer in enumerate(model.layers):
-            batch_layer_losses[i] = 0.0
 
-        running_batch_idx += 1
+def main(args):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
 
-        positive_images, _ = positive_batch
-        negative_images, _ = negative_batch
-        positive_images = positive_images.to(DEVICE)
-        negative_images = negative_images.to(DEVICE)
+    #### unsupervised backbone ####
+    if args.train_unsupervised_backbone:
+        model = ReceptiveFieldNet(device).to(device)
 
-        # Positive pass
-        layer_losses, layer_goodnesses_pos = model.train_batch(positive_images, "pos")
+        positive, negative, _ = create_mnist_datasets_unsupervised("data")
 
-        for i, layer_loss in enumerate(layer_losses):
-            batch_layer_losses[i] += layer_loss
-
-        # Negative pass
-        layer_losses, layer_goodnesses_neg = model.train_batch(negative_images, "neg")
-
-        for i, layer_loss in enumerate(layer_losses):
-            batch_layer_losses[i] += layer_loss
-
-        # Logging
-        for layer_idx, layer_goodness in enumerate(layer_goodnesses_pos):
-            writer.add_scalar(
-                f"Layer {layer_idx} Pos Goodness",
-                layer_goodness,
-                running_batch_idx,
-            )
-
-        for layer_idx, layer_goodness in enumerate(layer_goodnesses_neg):
-            writer.add_scalar(
-                f"Layer {layer_idx} Neg Goodness",
-                layer_goodness,
-                running_batch_idx,
-            )
-
-        # Print progress every 2 batches
-        batch_total_loss = 0.0
-        for layer_idx, batch_layer_loss in batch_layer_losses.items():
-            writer.add_scalar(
-                f"Layer {layer_idx} Batch Loss",
-                batch_layer_loss,
-                running_batch_idx,
-            )
-            batch_total_loss += batch_layer_loss
-
-        writer.add_scalar(
-            f"Total Batch Loss",
-            batch_total_loss,
-            running_batch_idx,
+        positive_loader = DataLoader(
+            positive, batch_size=args.batch_size, shuffle=True, num_workers=0
         )
-        postfix = {
-            f"Layer {layer_idx}": batch_layer_loss
-            for layer_idx, batch_layer_loss in batch_layer_losses.items()
-        }
-        progress_bar.set_postfix(postfix)
+        negative_loader = DataLoader(
+            negative, batch_size=args.batch_size, shuffle=True, num_workers=0
+        )
 
-        running_total_loss += batch_total_loss
+        if not args.no_logs:
+            writer = SummaryWriter(f"runs/unsupervised_backbone")
+        else:
+            writer = None
 
-    # Save the model every 5 epochs if it's the best so far
-    if epoch % 5 == 0:
-        average_total_loss = np.round(running_total_loss / running_batch_idx, 3)
-        if average_total_loss < lowest_total_loss:
-            torch.save(
-                model.state_dict(),
-                f"models/unsupervised_{timestamp}_{epoch}_{average_total_loss}.pt",
+        train_unsupervised_backbone(
+            model, positive_loader, negative_loader, device, args.num_epochs, writer
+        )
+
+    #### unsupervised classifier head ####
+    if args.train_unsupervised_clf:
+        model = ReceptiveFieldClassifier().to(device)
+        if args.pretrained_backbone_filename != "":
+            pretrained_backbone_path = os.path.join(
+                "models", args.pretrained_backbone_filename
             )
+        else:
+            pretrained_backbone_path = os.path.join("models", os.listdir("models")[-1])
+        print(f"Loading pretrained backbone from {pretrained_backbone_path}")
 
-writer.close()
-print(f"Finished training at {datetime.now().strftime('%H:%M:%S')}")
+        # Load pretrained backbone
+        pretrained_dict = torch.load(pretrained_backbone_path)
+        model_dict = model.state_dict()
+        pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
+
+        model_dict.update(pretrained_dict)
+        model.load_state_dict(model_dict)
+
+        # Freeze the convolutional layers
+        for param in model.layer1.parameters():
+            param.requires_grad = False
+        for param in model.layer2.parameters():
+            param.requires_grad = False
+        for param in model.layer3.parameters():
+            param.requires_grad = False
+
+        # Load data (mnist)
+        train, test = _load_mnist("data/")
+        train_loader = torch.utils.data.DataLoader(
+            train, batch_size=64, shuffle=True, num_workers=0
+        )
+        test_loader = torch.utils.data.DataLoader(
+            test, batch_size=64, shuffle=True, num_workers=0
+        )
+
+        if not args.no_logs:
+            writer = SummaryWriter(f"runs/unsupervised_head")
+        else:
+            writer = None
+
+        train_unsupervised_clf(
+            model, train_loader, test_loader, device, args.num_epochs, writer
+        )
+
+
+if __name__ == "__main__":
+    print("Starting at:", datetime.now().strftime("%Y-%m-%d_%Hh%M"))
+    print("-" * 80)
+
+    args = parse_args()
+
+    print("Arguments:")
+    for arg in vars(args):
+        print(arg, getattr(args, arg))
+    print("-" * 80)
+
+    main(args)
+
+    print("Finished at:", datetime.now().strftime("%Y-%m-%d_%Hh%M"))
