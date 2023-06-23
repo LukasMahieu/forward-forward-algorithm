@@ -123,11 +123,11 @@ def _save_negative_data(
     print("Negative data saved (+-230 MB).")
 
 
-def create_mnist_datasets(root_path: str = "data"):
+def create_mnist_datasets_unsupervised(root_path: str = "data"):
     """Load mnist and create positive and negative datasets."""
     train_mnist, test_mnist = _load_mnist(root_path)
-    positive_path = os.path.join(root_path, "MNIST", "positive_images")
-    negative_path = os.path.join(root_path, "MNIST", "negative_images")
+    positive_path = os.path.join(root_path, "MNIST", "unsupervised", "positive_images")
+    negative_path = os.path.join(root_path, "MNIST", "unsupervised", "negative_images")
 
     _save_positive_data(train_mnist, positive_path)
     _save_negative_data(train_mnist, negative_path)
@@ -143,17 +143,10 @@ class UnsupervisedDataset(torch.utils.data.Dataset):
         self.images_directory = images_directory
         self.images_list = os.listdir(images_directory)
         self.label = torch.Tensor([1 if "positive" in images_directory else 0])
-        self.transform = transforms.Compose(
-            [
-                transforms.ToTensor(),
-                transforms.Normalize((0.1307,), (0.3081,)),
-            ]
-        )
 
     def __getitem__(self, index):
         image_path = os.path.join(self.images_directory, self.images_list[index])
         image = np.load(image_path)
-        image = self.transform(image)
         return image, self.label
 
     def __len__(self):
@@ -163,11 +156,11 @@ class UnsupervisedDataset(torch.utils.data.Dataset):
 if __name__ == "__main__":
     print("Testing unsupervised.py")
     train_dataset, test_dataset = _load_mnist("data")
-    _save_positive_data(train_dataset, "data/MNIST/positive_images")
-    _save_negative_data(train_dataset, "data/MNIST/negative_images")
+    _save_positive_data(train_dataset, "data/MNIST/unsupervised/positive_images")
+    _save_negative_data(train_dataset, "data/MNIST/unsupervised/negative_images")
 
-    negative_dataset = UnsupervisedDataset("data/MNIST/negative_images")
-    positive_dataset = UnsupervisedDataset("data/MNIST/positive_images")
+    negative_dataset = UnsupervisedDataset("data/MNIST/unsupervised/negative_images")
+    positive_dataset = UnsupervisedDataset("data/MNIST/unsupervised/positive_images")
 
     # Create data loaders for the datasets
     negative_loader = DataLoader(negative_dataset, batch_size=1, shuffle=True)
