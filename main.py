@@ -12,7 +12,7 @@ from tqdm import tqdm
 from datetime import datetime
 
 from networks.unsupervised import ReceptiveFieldNet
-from datasets.unsupervised import create_mnist_datasets
+from datasets.unsupervised import create_mnist_datasets_unsupervised
 
 # Hyperparams
 BATCH_SIZE = 1000  # So 60 batches since 60k images
@@ -21,7 +21,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Using device:", DEVICE)
 
 # Create a dataset & dataloader (MNIST)
-positive, negative, test = create_mnist_datasets("data")
+positive, negative, test = create_mnist_datasets_unsupervised("data")
 model = ReceptiveFieldNet(DEVICE).to(DEVICE)
 
 # Create data loaders
@@ -64,17 +64,13 @@ for epoch in range(1, NUM_EPOCHS + 1):
         negative_images = negative_images.to(DEVICE)
 
         # Positive pass
-        layer_losses, layer_goodnesses_pos = model.train_batch(
-            positive_images, "pos"
-        )
+        layer_losses, layer_goodnesses_pos = model.train_batch(positive_images, "pos")
 
         for i, layer_loss in enumerate(layer_losses):
             batch_layer_losses[i] += layer_loss
 
         # Negative pass
-        layer_losses, layer_goodnesses_neg = model.train_batch(
-            negative_images, "neg"
-        )
+        layer_losses, layer_goodnesses_neg = model.train_batch(negative_images, "neg")
 
         for i, layer_loss in enumerate(layer_losses):
             batch_layer_losses[i] += layer_loss
@@ -119,9 +115,7 @@ for epoch in range(1, NUM_EPOCHS + 1):
 
     # Save the model every 5 epochs if it's the best so far
     if epoch % 5 == 0:
-        average_total_loss = np.round(
-            running_total_loss / running_batch_idx, 3
-        )
+        average_total_loss = np.round(running_total_loss / running_batch_idx, 3)
         if average_total_loss < lowest_total_loss:
             torch.save(
                 model.state_dict(),
