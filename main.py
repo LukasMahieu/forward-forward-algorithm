@@ -13,11 +13,13 @@ from forwardforward.datasets.unsupervised import (
 )
 from forwardforward.datasets.supervised import create_mnist_datasets_supervised
 
-from forwardforward.train.unsupervised_backbone import train_unsupervised_backbone
+from forwardforward.train.unsupervised_backbone import (
+    train_unsupervised_backbone,
+)
 from forwardforward.train.unsupervised_head import train_unsupervised_clf
 from forwardforward.train.supervised import train_supervised
 
-from forwardforward.networks.unsupervised import (
+from forwardforward.networks.cnn import (
     ReceptiveFieldNet,
     ReceptiveFieldClassifier,
 )
@@ -25,13 +27,16 @@ from forwardforward.networks.unsupervised import (
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--train_unsupervised_backbone", action="store_true")
-    parser.add_argument("--train_unsupervised_clf", action="store_true")
-    parser.add_argument("--train_supervised", action="store_true")
+    parser.add_argument("--unsupervised_backbone", action="store_true")
+    parser.add_argument("--unsupervised_clf", action="store_true")
+    parser.add_argument("--supervised", action="store_true")
     parser.add_argument("--batch_size", type=int, default=1000)
-    parser.add_argument("--num_epochs", type=int, default=10)
+    parser.add_argument("--num_epochs", type=int, default=100)
     parser.add_argument(
-        "--no_logs", default=False, action="store_true", help="Don't log to tensorboard"
+        "--no_logs",
+        default=False,
+        action="store_true",
+        help="Don't log to tensorboard",
     )
     parser.add_argument(
         "--pretrained_backbone_filename",
@@ -47,7 +52,7 @@ def main(args):
     print(f"Using device: {device}")
 
     #### unsupervised backbone ####
-    if args.train_unsupervised_backbone:
+    if args.unsupervised_backbone:
         model = ReceptiveFieldNet(device).to(device)
 
         positive, negative, _ = create_mnist_datasets_unsupervised("data")
@@ -65,24 +70,33 @@ def main(args):
             writer = None
 
         train_unsupervised_backbone(
-            model, positive_loader, negative_loader, device, args.num_epochs, writer
+            model,
+            positive_loader,
+            negative_loader,
+            device,
+            args.num_epochs,
+            writer,
         )
 
     #### unsupervised classifier head ####
-    if args.train_unsupervised_clf:
+    if args.unsupervised_clf:
         model = ReceptiveFieldClassifier().to(device)
         if args.pretrained_backbone_filename != "":
             pretrained_backbone_path = os.path.join(
                 "models", args.pretrained_backbone_filename
             )
         else:
-            pretrained_backbone_path = os.path.join("models", os.listdir("models")[-1])
+            pretrained_backbone_path = os.path.join(
+                "models", os.listdir("models")[-1]
+            )
         print(f"Loading pretrained backbone from {pretrained_backbone_path}")
 
         # Load pretrained backbone
         pretrained_dict = torch.load(pretrained_backbone_path)
         model_dict = model.state_dict()
-        pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
+        pretrained_dict = {
+            k: v for k, v in pretrained_dict.items() if k in model_dict
+        }
 
         model_dict.update(pretrained_dict)
         model.load_state_dict(model_dict)
@@ -114,16 +128,19 @@ def main(args):
         )
 
     #### Supervised network ####
-    if args.train_supervised:
+    if args.supervised:
         model = ReceptiveFieldNet(device).to(device)
 
-        positive, negative, _ = create_mnist_datasets_supervised("data")
+        positive, negative, test = create_mnist_datasets_supervised("data")
 
         positive_loader = DataLoader(
             positive, batch_size=args.batch_size, shuffle=True, num_workers=0
         )
         negative_loader = DataLoader(
             negative, batch_size=args.batch_size, shuffle=True, num_workers=0
+        )
+        test_loader = DataLoader(
+            test, batch_size=args.batch_size, shuffle=True, num_workers=0
         )
 
         if not args.no_logs:
@@ -132,7 +149,13 @@ def main(args):
             writer = None
 
         train_supervised(
-            model, positive_loader, negative_loader, device, args.num_epochs, writer
+            model,
+            positive_loader,
+            negative_loader,
+            test_loader,
+            device,
+            args.num_epochs,
+            writer,
         )
 
 

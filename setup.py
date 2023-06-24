@@ -1,7 +1,7 @@
 from setuptools import find_packages, setup
 
 setup(
-    name="forward-forward",
+    name="forwardforward",
     packages=find_packages(),
     version="0.1.0",
     description="A PyTorch implementation of the Forward-Forward algorithm (Hinton)",

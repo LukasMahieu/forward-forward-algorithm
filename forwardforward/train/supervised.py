@@ -10,18 +10,20 @@ def train_supervised(
     model: torch.nn.Module,
     positive_loader: DataLoader,
     negative_loader: DataLoader,
+    test_loader: DataLoader,
     device: torch.device,
     num_epochs: int,
     writer: torch.utils.tensorboard.SummaryWriter,
 ):
-    lowest_total_loss = 100
+    best_accuracy = 0
 
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    timestamp = datetime.now().strftime("%Y-%m-%d_%Hh%M")
 
     running_batch_idx = 0
     running_total_loss = 0.0
 
     for epoch in range(1, num_epochs + 1):
+        # Train pass
         model.train()
 
         progress_bar = tqdm(
@@ -61,14 +63,18 @@ def train_supervised(
 
             # Logging
             if writer is not None:
-                for layer_idx, layer_goodness in enumerate(layer_goodnesses_pos):
+                for layer_idx, layer_goodness in enumerate(
+                    layer_goodnesses_pos
+                ):
                     writer.add_scalar(
                         f"Layer {layer_idx} Pos Goodness",
                         layer_goodness,
                         running_batch_idx,
                     )
 
-                for layer_idx, layer_goodness in enumerate(layer_goodnesses_neg):
+                for layer_idx, layer_goodness in enumerate(
+                    layer_goodnesses_neg
+                ):
                     writer.add_scalar(
                         f"Layer {layer_idx} Neg Goodness",
                         layer_goodness,
@@ -100,14 +106,48 @@ def train_supervised(
 
             running_total_loss += batch_total_loss
 
-        # Save the model every 5 epochs if it's the best so far
+        # Test pass
         if epoch % 5 == 0:
-            average_total_loss = np.round(running_total_loss / running_batch_idx, 3)
-            if average_total_loss < lowest_total_loss:
+            model.eval()
+
+            progress_bar = tqdm(
+                enumerate(test_loader),
+                total=len(test_loader),
+                desc=f"Test",
+                unit="batch",
+            )
+
+            correct = 0
+            total = 0
+
+            for batch_idx, test_batch in progress_bar:
+                images, labels = test_batch
+                images = images.to(device)
+                labels = labels.to(device)
+
+                predicted_labels = model.forward_supervised(images)  # [B]
+
+                # Calculate accuracy
+                total += labels.size(0)
+                correct += (predicted_labels == labels).sum().item()
+
+            accuracy = 100 * correct / total
+            print(f"Test Accuracy: {accuracy}%")
+
+            if writer is not None:
+                writer.add_scalar(
+                    f"Test Accuracy",
+                    accuracy,
+                    running_batch_idx,
+                )
+
+            # Save the model if it's the best so far
+            if accuracy > best_accuracy:
                 torch.save(
                     model.state_dict(),
-                    f"models/unsupervised_{timestamp}_{epoch}_{average_total_loss}.pt",
+                    f"models/supervised_{timestamp}_epoch-{epoch}_acc-{accuracy}.pt",
                 )
+                best_accuracy = accuracy
 
     writer.close()
     print(
