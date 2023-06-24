@@ -34,11 +34,17 @@ python main.py --supervised # train supervised model
 
 python main.py --unsupervised_backbone # train unsupervised backbone
 
-python main.py --unsupervised_clf # train unsupervised head (requires pretrained backbone). Will use latest model found in /models folder. Alternatively, provide the pretrained backbone filename with the argument --pretrained_backbone_filename"
+python main.py --unsupervised_clf # train unsupervised head (requires pretrained backbone). Will use latest model found in /models folder. Alternatively, provide the pretrained backbone filename with the argument --pretrained_backbone_filename
 ```
 Check the *main.py* file for all available arguments.
-
 Before training, the mnist datasets is downloaded while positive and negative data are generated and stored to disk (if it doesn't exist yet)
+Trained models will be saved to the models/ folder.
+
+All important information is logged to Tensorboard (losses, positive goodnesses, negative goodnesses) in the runs/ folder. 
+For example, you can inspect the runs of a supervised model like this:
+```bash
+tensorboard --logdir runs/supervised # shows the supervised 
+```
 
 ## Temporary notes
 
