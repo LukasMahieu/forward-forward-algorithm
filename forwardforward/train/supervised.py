@@ -108,28 +108,29 @@ def train_supervised(
 
         # Test pass
         if epoch % 5 == 0:
-            model.eval()
+            with torch.no_grad():
+                model.eval()
 
-            progress_bar = tqdm(
-                enumerate(test_loader),
-                total=len(test_loader),
-                desc=f"Test",
-                unit="batch",
-            )
+                progress_bar = tqdm(
+                    enumerate(test_loader),
+                    total=len(test_loader),
+                    desc=f"Test",
+                    unit="batch",
+                )
 
-            correct = 0
-            total = 0
+                correct = 0
+                total = 0
 
-            for batch_idx, test_batch in progress_bar:
-                images, labels = test_batch
-                images = images.to(device)
-                labels = labels.to(device)
+                for batch_idx, test_batch in progress_bar:
+                    images, labels = test_batch
+                    images = images.to(device)
+                    labels = labels.to(device)
 
-                predicted_labels = model.forward_supervised(images)  # [B]
+                    predicted_labels = model.forward_supervised(images)  # [B]
 
-                # Calculate accuracy
-                total += labels.size(0)
-                correct += (predicted_labels == labels).sum().item()
+                    # Calculate accuracy
+                    total += labels.size(0)
+                    correct += (predicted_labels == labels).sum().item()
 
             accuracy = 100 * correct / total
             print(f"Test Accuracy: {accuracy}%")
