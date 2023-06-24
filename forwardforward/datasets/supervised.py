@@ -99,7 +99,7 @@ def _save_negative_data(
     print("Negative data saved (+-230 MB).")
 
 
-def create_mnist_datasets_unsupervised(root_path: str = "data"):
+def create_mnist_datasets_supervised(root_path: str = "data"):
     """Load mnist and create positive and negative datasets."""
     train_mnist, test_mnist = _load_mnist(root_path)
     positive_path = os.path.join(root_path, "MNIST", "supervised", "positive_images")
@@ -119,10 +119,14 @@ class SupervisedDataset(torch.utils.data.Dataset):
         self.images_directory = images_directory
         self.images_list = os.listdir(images_directory)
         self.label = torch.Tensor([1 if "positive" in images_directory else 0])
+        self.transform = transforms.Compose(
+            [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
+        )
 
     def __getitem__(self, index):
         image_path = os.path.join(self.images_directory, self.images_list[index])
         image = np.load(image_path)
+        image = self.transform(image)
         return image, self.label
 
     def __len__(self):

@@ -7,7 +7,7 @@ from collections import OrderedDict
 
 
 class ReceptiveFieldNet(nn.Module):
-    def __init__(self, device, supervised: bool = False):
+    def __init__(self, device):
         super(ReceptiveFieldNet, self).__init__()
         layer1 = ReceptiveFieldLayer(1, 128, 10, 6).to(device)
         layer2 = ReceptiveFieldLayer(128, 220, 2, 1).to(device)
@@ -35,6 +35,13 @@ class ReceptiveFieldNet(nn.Module):
                 new_name = f"layer{i+1}.{name}"
                 state[new_name] = param
         return state
+
+    def forward_supervised(self, x):
+        """Forward pass for supervised learning. Don't use this for unsupervised learning (use ReceptiveFieldClassifier instead)."""
+        h = x
+        for layer in self.layers:
+            h = layer(h)
+        return h
 
 
 class ReceptiveFieldLayer(nn.Module):

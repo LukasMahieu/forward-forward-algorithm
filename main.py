@@ -11,8 +11,12 @@ from forwardforward.datasets.unsupervised import (
     create_mnist_datasets_unsupervised,
     _load_mnist,
 )
+from forwardforward.datasets.supervised import create_mnist_datasets_supervised
+
 from forwardforward.train.unsupervised_backbone import train_unsupervised_backbone
 from forwardforward.train.unsupervised_head import train_unsupervised_clf
+from forwardforward.train.supervised import train_supervised
+
 from forwardforward.networks.unsupervised import (
     ReceptiveFieldNet,
     ReceptiveFieldClassifier,
@@ -107,6 +111,28 @@ def main(args):
 
         train_unsupervised_clf(
             model, train_loader, test_loader, device, args.num_epochs, writer
+        )
+
+    #### Supervised network ####
+    if args.train_supervised:
+        model = ReceptiveFieldNet(device).to(device)
+
+        positive, negative, _ = create_mnist_datasets_supervised("data")
+
+        positive_loader = DataLoader(
+            positive, batch_size=args.batch_size, shuffle=True, num_workers=0
+        )
+        negative_loader = DataLoader(
+            negative, batch_size=args.batch_size, shuffle=True, num_workers=0
+        )
+
+        if not args.no_logs:
+            writer = SummaryWriter(f"runs/supervised")
+        else:
+            writer = None
+
+        train_supervised(
+            model, positive_loader, negative_loader, device, args.num_epochs, writer
         )
 
 
