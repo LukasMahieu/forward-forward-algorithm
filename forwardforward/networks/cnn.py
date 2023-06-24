@@ -45,7 +45,9 @@ class ReceptiveFieldNet(nn.Module):
 
 
 class ReceptiveFieldLayer(nn.Module):
-    def __init__(self, C_in: int, C_out: int, kernel_size: int, stride: int, lr=0.001):
+    def __init__(
+        self, C_in: int, C_out: int, kernel_size: int, stride: int, lr=0.001
+    ):
         super(ReceptiveFieldLayer, self).__init__()
         self.relu = nn.ReLU()
         self.conv = nn.Conv2d(C_in, C_out, kernel_size, stride)
@@ -102,31 +104,3 @@ class ReceptiveFieldClassifier(nn.Module):
         h = self.flatten(h)
         h = self.fc(h)
         return h
-
-
-### Fully connected not implemented yet ###
-
-
-class FullyConnected(nn.Module):
-    """Fully connected network for the unsupervised learning task. Has four hidden layer of 2000 ReLU units each."""
-
-    def __init__(self, dim_input=28 * 28 * 1):
-        super(FullyConnected, self).__init__()
-        self.fc1 = nn.Linear(dim_input, 2000)
-        self.relu1 = nn.ReLU()
-        self.fc2 = nn.Linear(2000, 2000)
-        self.relu2 = nn.ReLU()
-        self.fc3 = nn.Linear(2000, 2000)
-        self.relu3 = nn.ReLU()
-        self.fc4 = nn.Linear(2000, 2000)
-        self.relu4 = nn.ReLU()
-
-    def forward(self, x):
-        """Forward pass through the network.
-        Note: don't forget to apply layer normalization to the output of each layer.
-        """
-        output1 = self.relu1(self.fc1(x))
-        output2 = self.relu2(self.fc2(output1))
-        output3 = self.relu3(self.fc3(output2))
-        output4 = self.relu4(self.fc4(output3))
-        return output1, output2, output3, output4
