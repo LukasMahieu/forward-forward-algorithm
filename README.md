@@ -1,3 +1,20 @@
+# The Forward-Forward Algorithm (Hinton, 2022)
+
+**This code is for my personal educational purposes and still a work in progress. You are free to use it in any way you want, but know that there may be bugs.**
+
+## Project description
+
+This is a pytorch implementation of Hinton's [Forward-Forward algorithm](https://arxiv.org/abs/2212.13345)
+
+The codebase is roughly based on mohammadpz's excellent [pytorch_forward_forward](https://github.com/mohammadpz/pytorch_forward_forward) implementation, with some major differences to keep it more in line with the sentiment of the original paper.
+1. Model layers are not trained one by one, but all at once. One batch always passes through the entire network.
+2. Positive and negative data is passed alternately through the network, instead of being mixed together.
+3. The loss function is the one described in the paper.
+4. Since I didn't see any implementation yet of the CNN model described in the paper, I implemented that version instead of the fully connected one.
+5. I implemented both supervised and unsupervised versions.
+
+The code in its current state behaves as described in the paper (i.e. high goodness for positive data and low goodness for negative data in each layer, while the overall loss and per layer loss decreases nicely). However, in the prediction phase, the **model does not perform as expected** yet and the accuracy on the test set is low. I'm still investigating why this is the case, feel free to open an issue if you have any ideas.
+
 ## Installation
 
 ```
@@ -8,11 +25,22 @@ pip install -r requirements.txt
 
 Install latest version of [pytorch and torchvision](https://pytorch.org/get-started/locally/) for your system.
 
-## To Do
-[] : Fix loss zero near end of epoch
-[] : Fix loss calculation
+## Usage
 
-## Tmp
+You can train a network by running *main.py* with the following arguments:
+
+```python
+python main.py --supervised # train supervised model
+
+python main.py --unsupervised_backbone # train unsupervised backbone
+
+python main.py --unsupervised_clf # train unsupervised head (requires pretrained backbone). Will use latest model found in /models folder. Alternatively, provide the pretrained backbone filename with the argument --pretrained_backbone_filename"
+```
+Check the *main.py* file for all available arguments.
+
+Before training, the mnist datasets is downloaded while positive and negative data are generated and stored to disk (if it doesn't exist yet)
+
+## Temporary notes
 
 ```
 # Didn't work since prob_pos too similar always (so 1 or 0)
