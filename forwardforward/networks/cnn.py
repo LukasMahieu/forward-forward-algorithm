@@ -106,10 +106,10 @@ class ReceptiveFieldLayer(nn.Module):
         )  # [0;inf], accross batch
 
         if datatype == "pos":
-            loss = -goodness + self.threshold
+            loss = -torch.sigmoid(goodness - self.threshold)
         elif datatype == "neg":
-            loss = goodness - self.threshold
-        loss = torch.log(1 + torch.exp(loss))
+            loss = torch.sigmoid(goodness - self.threshold)
+
         loss.backward()
         self.opt.step()
 
