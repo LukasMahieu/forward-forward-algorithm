@@ -44,12 +44,20 @@ def parse_args():
         default="",
         help="Optional filename of pretrained backbone in /models. Will use latest backbone in models/ if not specified.",
     )
+    parser.add_argument(
+        "--run_name",
+        type=str,
+        default="",
+        help="Optional extra name for Tensorboard run",
+    )
     return parser.parse_args()
 
 
 def main(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
+    now = datetime.now().strftime("%Y%m%d-%Hh%M")
+    run_name = now + "_" + args.run_name if args.run_name != "" else now
 
     #### unsupervised backbone ####
     if args.unsupervised_backbone:
@@ -65,7 +73,7 @@ def main(args):
         )
 
         if not args.no_logs:
-            writer = SummaryWriter(f"runs/unsupervised_backbone")
+            writer = SummaryWriter(f"runs/unsupervised_backbone/{run_name}")
         else:
             writer = None
 
@@ -119,7 +127,7 @@ def main(args):
         )
 
         if not args.no_logs:
-            writer = SummaryWriter(f"runs/unsupervised_head")
+            writer = SummaryWriter(f"runs/unsupervised_head/{run_name}")
         else:
             writer = None
 
@@ -144,7 +152,7 @@ def main(args):
         )
 
         if not args.no_logs:
-            writer = SummaryWriter(f"runs/supervised")
+            writer = SummaryWriter(f"runs/supervised/{run_name}")
         else:
             writer = None
 

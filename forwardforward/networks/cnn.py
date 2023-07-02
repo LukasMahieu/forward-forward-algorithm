@@ -70,7 +70,9 @@ class ReceptiveFieldNet(nn.Module):
             layer_goodness = []
             for layer in self.layers:
                 h = layer(h)  # [B, C, H, W]
-                layer_goodness.append(torch.mean(torch.square(h), dim=(1, 2, 3)))  # [B]
+                layer_goodness.append(
+                    torch.mean(torch.square(h), dim=(1, 2, 3))
+                )  # [B]
             goodness_per_label.append(
                 torch.sum(torch.stack(layer_goodness, dim=1), dim=1)
             )
@@ -81,7 +83,9 @@ class ReceptiveFieldNet(nn.Module):
 class ReceptiveFieldLayer(nn.Module):
     """Individual layer of ReceptiveFieldNet."""
 
-    def __init__(self, C_in: int, C_out: int, kernel_size: int, stride: int, lr=0.001):
+    def __init__(
+        self, C_in: int, C_out: int, kernel_size: int, stride: int, lr=0.001
+    ):
         super(ReceptiveFieldLayer, self).__init__()
         self.relu = nn.ReLU()
         self.conv = nn.Conv2d(C_in, C_out, kernel_size, stride)
@@ -97,10 +101,12 @@ class ReceptiveFieldLayer(nn.Module):
         """Train the layer for one batch of positive or negative data."""
         self.opt.zero_grad()
 
-        goodness = torch.mean(torch.square(self.forward(x)))  # [0;inf], accross batch
+        goodness = torch.mean(
+            torch.square(self.forward(x))
+        )  # [0;inf], accross batch
 
         if datatype == "pos":
-            loss = -torch.sigmoid(goodness - self.threshold + epsilon)
+            loss = 1 - torch.sigmoid(goodness - self.threshold + epsilon)
         elif datatype == "neg":
             loss = torch.sigmoid(goodness - self.threshold + epsilon)
 
